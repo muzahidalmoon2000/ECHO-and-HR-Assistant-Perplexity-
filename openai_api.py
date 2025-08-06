@@ -30,7 +30,6 @@ def perplexity_chat(prompt, system_prompt=None, temperature=0.7):
     response.raise_for_status()
     return response.json()['choices'][0]['message']['content'].strip()
 
-
 def detect_intent_and_extract(user_input):
     """
     Detect user intent and extract a clean query using Perplexity AI.
@@ -43,10 +42,8 @@ def detect_intent_and_extract(user_input):
     except Exception as e:
         print("❌ Perplexity intent fallback error:", e)
 
-    # 🔁 Fallback: rule-based intent detection
     input_lower = user_input.strip().lower()
     file_keywords = ["file", "document", "report", "sheet", "policy"]
-
     low_context_phrases = [
         "hi", "hello", "how are you", "thank you", "what can you do",
         "who are you", "good morning", "good evening", "hey", "help"
@@ -59,12 +56,11 @@ def detect_intent_and_extract(user_input):
     for kw in file_keywords:
         if kw in input_lower:
             return {
-                "intent": "file_search",
-                "data": input_lower.replace(kw, "").strip()
+                "intent": "file_search_prompt",
+                "data": ""
             }
 
     return {"intent": "general_response", "data": user_input}
-
 
 def detect_intent_and_extract_pplx(user_input):
     """
@@ -72,49 +68,58 @@ def detect_intent_and_extract_pplx(user_input):
     Returns a strict JSON object with one of these intents:
     - HR_Admin
     - file_search
+    - file_search_prompt
     - general_response
     """
-
     system_prompt = (
-        "You're an intent classifier for an HR assistant chatbot. Classify the user input into one of these intents:\n\n"
-        "- HR_Admin: For queries about HR policies, leave, NID, ID numbers, benefits, holidays, onboarding, payroll, etc.\n"
-        "- file_search: If the user is clearly asking to search, find, retrieve, preview or get a specific document or file.\n"
-        "- general_response: For greetings, personal chitchat, jokes, thank you, or unrelated casual queries.\n\n"
+        "You're an intent classifier for an HR + file assistant chatbot. Classify the user input into one of these intents:\n\n"
+        "- HR_Admin: For queries about HR policies, leave, NID, ID numbers, benefits, holidays, onboarding, payroll, work schedule, HR rules, or employee matters.\n"
+        "- file_search: If the user is clearly asking to search, find, retrieve, preview, or get a specific document or file (e.g., 'valuation report', 'pike 2023 financials', 'supernova deck').\n"
+        "- file_search_prompt: If the user gives a vague phrase like 'I need a file', 'I'm looking for something', 'Can you help me find a document?', without specifying what.\n"
+        "- general_response: For greetings, chitchat, jokes, thank you, or unrelated input.\n\n"
         "Respond strictly in this JSON format:\n"
         "{\"intent\": \"intent_name\", \"data\": \"cleaned relevant keyword(s) or query\"}\n\n"
         "Examples:\n"
         "User: What is the maternity leave policy?\n"
-        "→ {\"intent\": \"HR_Admin\", \"data\": \"maternity leave policy\"}\n\n"
-        "User: Show me the 2024 financial report.\n"
-        "→ {\"intent\": \"file_search\", \"data\": \"2024 financial report\"}\n\n"
-        "User: Hello there!\n"
-        "→ {\"intent\": \"general_response\", \"data\": \"\"}\n\n"
+        "\u2192 {\"intent\": \"HR_Admin\", \"data\": \"maternity leave policy\"}\n\n"
+        "User: Show me the 2024 financial report file\n"
+        "\u2192 {\"intent\": \"file_search\", \"data\": \"2024 financial report\"}\n\n"
+        "User: I am looking for a file\n"
+        "\u2192 {\"intent\": \"file_search_prompt\", \"data\": \"\"}\n\n"
         "Strict rules:\n"
-        "- Classify anything involving NID, ID number, holidays, leave, benefits, work policy, etc. as HR_Admin.\n"
-        "- Classify file-related queries as file_search.\n"
-        "- Return general_response only when nothing fits.\n"
-        "- Output must be valid JSON ONLY with no extra explanation.\n\n"
+        "- Classify vague inputs (e.g., 'I need a document', 'show me a file', 'I'm looking for something') as 'file_search_prompt'.\n"
+        "- Do NOT classify inputs as 'file_search' if they only mention 'file', 'document', etc. without a topic or description.\n"
+        "- Remove suffix words like 'file', 'document','excel', 'sheet','list','pdf','docx','txt' from the extracted data.\n"
+        "- Classify questions like '2023 pike valuation', 'Q4 deck', 'supernova update', 'board report' as file_search.\n"
+        "- Output must be strict valid JSON with no extra commentary.\n\n"
         f"User input:\n{user_input}"
     )
 
     try:
         response = perplexity_chat(user_input, system_prompt=system_prompt, temperature=0.2)
-        return json.loads(response)
+        result = json.loads(response)
+
+        if "data" in result and isinstance(result["data"], str):
+            result["data"] = re.sub(r"\\b(file|document|sheet|pdf|docx|txt)\\b", "", result["data"], flags=re.IGNORECASE).strip()
+
+        return result
     except Exception as e:
         print("❌ Perplexity error during intent detection:", e)
         return {"intent": "general_response", "data": ""}
 
-
 def answer_general_query(user_input):
     """
-    Handles general queries using Perplexity AI.
+    Handles general queries like greetings or casual small talk using Perplexity, with short replies.
     """
-    from perplexity_ranker import call_perplexity_chat
-
-    return call_perplexity_chat(
-        user_input,
-        system="You are a helpful assistant. Answer casually and clearly."
-    )
+    try:
+        return perplexity_chat(
+            user_input,
+            system_prompt="Reply naturally, warmly, and briefly. Do not include source reference numbers like [1], [2], etc. in your response. If the message is a greeting like 'hi', 'good morning', 'good afternoon', just return a simple, friendly 1-line greeting like chatGPT greeting response. Do not add suggestions or information.",
+            temperature=0.4
+        )
+    except Exception as e:
+        print("❌ Error in dynamic general response:", e)
+        return "Hi there!"
 
 
 def answer_with_chat_style(user_input):

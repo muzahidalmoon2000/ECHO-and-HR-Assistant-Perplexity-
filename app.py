@@ -324,12 +324,18 @@ def chat():
             if hr_response and not hr_response.startswith("⚠️ No readable HR documents"):
                 save_message(user_email, chat_id, ai_response=hr_response)
                 return jsonify(response=hr_response, intent="hr_admin")
+            
+        if intent == "file_search_prompt":
+            msg = "Can you tell me what kind of file you're trying to find?"
+            save_message(user_email, chat_id, ai_response=msg)
+            return jsonify(response=msg, intent="general_response")
+
 
         # ✅ File search
         if intent == "file_search" and query and len(query) >= 2:
             print("Detected intent:", intent, "with query:", query)
             session["last_query"] = query
-            top_files = search_all_files(token, query)
+            top_files = search_all_files(token, query,user_input)
 
             if not top_files:
                 msg = "📁 No files found."
@@ -364,6 +370,8 @@ def chat():
                 if "." in f["name"]
             ]))
 
+            selected_file_ids = [f["id"] for f in accessible]  # You can use this if users selected anything
+            print(f"Total files found: {len(accessible)}")
             return jsonify({
                 "response": msg,
                 "pauseGPT": True,
@@ -371,8 +379,10 @@ def chat():
                 "page": page,
                 "total": len(accessible),
                 "file_types": sorted(file_types),
+                "selectedFileIds": selected_file_ids,  # ✅ Add this line
                 "allFileIds": [f["id"] for f in accessible]
             })
+
         
         # ✅ General questions fallback to ChatGPT-style response
         if intent == "general_response":

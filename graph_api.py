@@ -77,7 +77,7 @@ def discover_all_sites(token):
             break
     return sites
 
-def search_all_files(token, query):
+def search_all_files(token, query,original_query=None):
     headers = {"Authorization": f"Bearer {token}"}
     all_results = []
     seen_ids = set()
@@ -89,9 +89,9 @@ def search_all_files(token, query):
     year = year_match.group() if year_match else None
 
     words = query.split()
-    if year:
+    if year and year in words:
         words.remove(year)
-
+        
     core = " ".join(words).strip().lower()
     query_batch = [core]
 
@@ -166,9 +166,9 @@ def search_all_files(token, query):
                 f["extracted_text"] = f"{f['name']} {f.get('webUrl', '')}"
         else:
             f["extracted_text"] = f"{f['name']} {f.get('webUrl', '')}"
-
+    print(f"Total Files Found: {len(all_results)}")
     print("🤖 [3] Ranking files with Perplexity...")
-    ranked_files = rank_files_with_perplexity(query, all_results)
+    ranked_files = rank_files_with_perplexity(query, all_results, original_query=original_query)
 
     total_time = time.time() - overall_start
     print(f"✅ Done. Total pipeline time: {total_time:.2f} seconds.")

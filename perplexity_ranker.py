@@ -7,7 +7,7 @@ load_dotenv()
 PPLX_API_KEY = os.getenv("PPLX_API_KEY")
 PPLX_API_URL = "https://api.perplexity.ai/chat/completions"
 
-def rank_files_with_perplexity(query, files):
+def rank_files_with_perplexity(query, files, original_query=None):
     print(query)
     headers = {
         "Authorization": f"Bearer {PPLX_API_KEY}",
@@ -21,25 +21,26 @@ def rank_files_with_perplexity(query, files):
     )
 
     system_prompt = (
-        "You are a document assistant AI. Your job is to rank the following files "
-        "in order of how closely each file matches the user's query.\n\n"
+        "You are a smart document assistant. Your job is to rank the following files in order of relevance "
+        "to the user's query, giving preference to the most recent files if they are relevant.\n\n"
         "Instructions:\n"
-        "- Focus on exact relevance to the query.\n"
-        "- Use both the file name and content to determine accuracy.\n"
-        "- Do NOT infer recency, importance, or guess missing context.\n"
-        "- Match based on clear textual similarity — highest match to query goes first.\n"
+        "- Rank based on both the file name and content.\n"
+        "- If multiple files match the query, prefer files that are more recent.\n"
+        "- You may infer recency from filenames if they contain date patterns (e.g., 2024,2023 etc).\n"
+        "- Match based on clear textual similarity AND date recency — most relevant and recent goes first.\n"
         "- Respond ONLY in this format:\n"
         "Ranked files:\n1. filename\n2. filename\n..."
     )
 
     user_prompt = (
+        f"User Original Query: {original_query}\n\n"
         f"User query: {query}\n\n"
         f"Files:\n{file_descriptions}\n\n"
         "Rank these files from most to least relevant based strictly on the query."
     )
 
     data = {
-        "model": "sonar-pro",
+        "model": "sonar-deep-research",
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
