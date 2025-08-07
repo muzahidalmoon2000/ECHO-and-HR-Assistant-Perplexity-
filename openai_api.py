@@ -114,7 +114,7 @@ def answer_general_query(user_input):
     try:
         return perplexity_chat(
             user_input,
-            system_prompt="Reply naturally, warmly, and briefly. Do not include source reference numbers like [1], [2], etc. in your response. If the message is a greeting like 'hi', 'good morning', 'good afternoon', just return a simple, friendly 1-line greeting like chatGPT greeting response. Do not add suggestions or information.",
+            system_prompt="You are a helpful assistant named ECHO. Reply clearly and briefly to casual user messages questions like 'what can you do?' or 'who are you?'. Reply naturally, warmly, and briefly. Do not include source reference numbers like [1], [2], etc. in your response. If the message is a greeting like 'hi', 'good morning', 'good afternoon', just return a simple, friendly 1-line greeting like chatGPT greeting response. Do not add suggestions or information.",
             temperature=0.4
         )
     except Exception as e:

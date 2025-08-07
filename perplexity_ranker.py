@@ -40,7 +40,7 @@ def rank_files_with_perplexity(query, files, original_query=None):
     )
 
     data = {
-        "model": "sonar-deep-research",
+        "model": "sonar-pro",
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
